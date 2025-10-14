@@ -4,8 +4,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { Stock } from '../lib/types';
-import { fetchMultipleStockPrices, StockPrice } from '../lib/yahooFinance';
+import { Stock, StockPrice } from '../lib/types';
+import { fetchStockPrice } from '../lib/yahooFinance';
+import { getInitialStockPrices, updatePricesInBackground } from '../lib/stockPrices';
 import { formatCurrency, formatNumber, isMarketOpen } from '../lib/marketUtils';
 import { Search, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -36,20 +37,32 @@ export default function StocksList() {
       if (error) throw error;
       setStocks(data);
 
-      const symbols = data.map((s) => s.symbol);
-      const prices = await fetchMultipleStockPrices(symbols);
-      setStockPrices(prices);
+      const initialPrices = await getInitialStockPrices(data);
+      setStockPrices(initialPrices);
+
+      setLoading(false);
+
+      updatePricesInBackground(data, (symbol, price) => {
+        setStockPrices(prev => {
+          const updated = new Map(prev);
+          updated.set(symbol, price);
+          return updated;
+        });
+      });
     } catch (error) {
       console.error('Error fetching stocks:', error);
-    } finally {
       setLoading(false);
     }
   };
 
   const fetchPrices = async () => {
-    const symbols = stocks.map((s) => s.symbol);
-    const prices = await fetchMultipleStockPrices(symbols);
-    setStockPrices(prices);
+    updatePricesInBackground(stocks, (symbol, price) => {
+      setStockPrices(prev => {
+        const updated = new Map(prev);
+        updated.set(symbol, price);
+        return updated;
+      });
+    });
   };
 
   const handleRefresh = async () => {

@@ -5,8 +5,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Stock, StockHistory, Holding } from '../lib/types';
-import { fetchStockPrice, StockPrice } from '../lib/yahooFinance';
+import { Stock, StockHistory, Holding, StockPrice } from '../lib/types';
+import { fetchStockPrice } from '../lib/yahooFinance';
+import { getLatestHistoricalPrice, getFallbackPrice } from '../lib/stockPrices';
 import { formatCurrency, formatNumber, formatDate, isMarketOpen, getNextMarketOpenTime } from '../lib/marketUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Clock, ArrowLeft, Sparkles, BookOpen } from 'lucide-react';
@@ -59,8 +60,11 @@ export default function StockDetail() {
 
       setStock(stockData);
 
-      const price = await fetchStockPrice(symbol!);
-      setPriceData(price);
+      let initialPrice = await getLatestHistoricalPrice(stockData.id, stockData.symbol);
+      if (!initialPrice) {
+        initialPrice = getFallbackPrice(stockData.symbol);
+      }
+      setPriceData(initialPrice);
 
       const { data: holdingData } = await supabase
         .from('holdings')
@@ -79,9 +83,16 @@ export default function StockDetail() {
         .limit(365);
 
       setHistory(historyData || []);
+
+      setLoading(false);
+
+      fetchStockPrice(symbol!).then(livePrice => {
+        if (livePrice) {
+          setPriceData(livePrice);
+        }
+      });
     } catch (error) {
       console.error('Error fetching stock data:', error);
-    } finally {
       setLoading(false);
     }
   };
