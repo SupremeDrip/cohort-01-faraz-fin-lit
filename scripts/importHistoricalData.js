@@ -1,14 +1,14 @@
-// Historical Stock Data Import Script (JavaScript version)
+// Historical Stock Data Import Script (ES Module version)
 // Imports NSE stock market data from CSV files into Supabase database
 // Run with: node scripts/importHistoricalData.js
 
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
-const { parse } = require('csv-parse/sync');
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+import { parse } from 'csv-parse/sync';
+import dotenv from 'dotenv';
 
-// Load environment variables
-require('dotenv').config();
+dotenv.config();
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
@@ -86,19 +86,13 @@ function parseNumber(value) {
 
 function parseDate(dateStr) {
   try {
-    // Handle multiple date formats
-    // Format 1: DD-MMM-YYYY (e.g., 01-Jan-2008)
-    // Format 2: YYYY-MM-DD (e.g., 2008-01-01)
-
     if (dateStr.includes('-')) {
       const parts = dateStr.split('-');
 
-      // Check if it's already in YYYY-MM-DD format
       if (parts[0].length === 4) {
         return dateStr;
       }
 
-      // Otherwise, it's DD-MMM-YYYY format
       if (parts.length !== 3) return null;
 
       const day = parts[0].padStart(2, '0');
