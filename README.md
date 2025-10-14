@@ -77,41 +77,6 @@ FinSim provides a complete paper trading experience with virtual cash of ₹100,
 
 See `supabase/migrations/` for detailed schema definitions and RLS policies.
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- Supabase account and project
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Set up environment variables:
-   Create a `.env` file with:
-   ```
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. Apply database migrations:
-   Database migrations are located in `supabase/migrations/`
-
-5. Start the development server:
-   ```bash
-   npm run dev
-   ```
-
-### Build for Production
-
-```bash
-npm run build
-```
 
 ## Project Structure
 
@@ -215,31 +180,8 @@ Trading is restricted to Indian stock market hours:
 
 ## Documentation
 
-- **README.md** - This file, project overview and setup
+- **README.md** - This file, project overview and features
 - **FUNCTIONAL_REQUIREMENTS.md** - Complete functional requirements document with detailed specifications
-
-## Future Enhancements
-
-Potential features for future development:
-- Watchlist functionality
-- Advanced charting with technical indicators
-- Portfolio performance analytics
-- Educational modules and tutorials
-- Leaderboards and achievements
-- Options and futures trading simulation
-- Multi-exchange support (BSE, NYSE, NASDAQ)
-
-## Contributing
-
-This is a learning platform designed for educational purposes. The virtual trading environment uses simulated currency and is not connected to real financial markets.
-
-## License
-
-This project is built for educational purposes.
-
-## Support
-
-For issues or questions, please refer to the documentation or contact the development team.
 
 ---
 
