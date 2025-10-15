@@ -352,6 +352,15 @@ export default function StockDetail() {
             </div>
           </div>
 
+          {history.length === 0 && (
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-900 font-medium mb-2">Historical data may not be imported yet</p>
+              <p className="text-xs text-blue-700">
+                To import historical stock data, run: <code className="bg-blue-100 px-2 py-1 rounded">node scripts/importHistoricalData.js</code>
+              </p>
+            </div>
+          )}
+
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={chartData}>
@@ -395,8 +404,11 @@ export default function StockDetail() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-96 flex items-center justify-center text-gray-500">
-              No historical data available
+            <div className="h-96 flex flex-col items-center justify-center text-gray-500">
+              <p className="text-lg font-medium mb-2">No historical data available</p>
+              <p className="text-sm text-gray-400">Stock ID: {stock?.id} | Symbol: {stock?.symbol}</p>
+              <p className="text-sm text-gray-400">History records loaded: {history.length}</p>
+              <p className="text-xs text-gray-400 mt-2">Check browser console for details</p>
             </div>
           )}
         </div>
