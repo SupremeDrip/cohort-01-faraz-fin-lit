@@ -86,6 +86,20 @@ export default function StockDetail() {
         setHistory([]);
       } else {
         console.log(`Fetched ${historyData?.length || 0} historical records for ${stockData.symbol} (stock_id: ${stockData.id})`);
+
+        // Debug: Check what stock_ids actually exist in stock_history
+        const { data: sampleHistory } = await supabase
+          .from('stock_history')
+          .select('stock_id')
+          .limit(100);
+
+        if (sampleHistory) {
+          const uniqueIds = [...new Set(sampleHistory.map(h => h.stock_id))].sort((a, b) => a - b);
+          console.log(`📊 Sample stock_ids found in stock_history table: ${uniqueIds.slice(0, 20).join(', ')}`);
+          console.log(`📊 Does stock_history contain our stock_id ${stockData.id}? ${uniqueIds.includes(stockData.id) ? '✅ YES' : '❌ NO'}`);
+          console.log(`📊 Stock_id range in history: ${Math.min(...uniqueIds)} to ${Math.max(...uniqueIds)}`);
+        }
+
         setHistory(historyData || []);
       }
 
