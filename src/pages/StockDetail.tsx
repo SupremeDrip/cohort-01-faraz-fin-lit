@@ -412,33 +412,32 @@ export default function StockDetail() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 relative overflow-hidden">
+          <div className="absolute top-4 right-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+            Coming Soon
+          </div>
+
           <div className="flex items-center space-x-3 mb-4">
-            <Sparkles className="w-6 h-6 text-blue-600" />
+            <Sparkles className="w-6 h-6 text-gray-400" />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">AI-Powered Analysis</h2>
-              <p className="text-sm text-gray-600">Beginner-friendly insights to help you learn</p>
+              <h2 className="text-xl font-bold text-gray-400">AI-Powered Analysis</h2>
+              <p className="text-sm text-gray-500">Beginner-friendly insights to help you learn</p>
             </div>
           </div>
 
           {!showInsight ? (
-            <div className="text-center py-8">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-600 mb-4">Get educational insights about this stock</p>
+            <div className="text-center py-8 opacity-60">
+              <BookOpen className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500 mb-4">Get educational insights about this stock</p>
               <button
-                onClick={handleGetInsight}
-                disabled={insightLoading}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+                className="px-6 py-3 bg-gray-300 text-gray-500 font-semibold rounded-lg cursor-not-allowed"
               >
-                {insightLoading ? (
-                  <span className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>AI is thinking...</span>
-                  </span>
-                ) : (
-                  'Get AI Recommendation'
-                )}
+                Get AI Recommendation
               </button>
+              <p className="text-sm text-purple-600 font-medium mt-3">
+                🚀 This feature is currently under development
+              </p>
             </div>
           ) : (
             <div>
