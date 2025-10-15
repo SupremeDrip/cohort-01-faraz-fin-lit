@@ -1,8 +1,9 @@
 // Stock price utilities for fetching historical and current prices
-// Uses historical database data with fallback mock prices
+// Uses historical data for initial load, then fetches live prices from Alpha Vantage
 
 import { supabase } from './supabase';
 import { StockPrice } from './types';
+import { fetchStockPrice, fetchMultipleStockPrices as fetchMultipleFromAPI } from './yahooFinance';
 
 const FALLBACK_PRICES: Record<string, number> = {
   'RELIANCE': 2456.50,
@@ -35,26 +36,17 @@ const FALLBACK_PRICES: Record<string, number> = {
   'JSWSTEEL': 876.30,
   'INDUSINDBK': 1345.60,
   'ADANIPORTS': 1234.50,
-  'M&M': 1876.40,
   'TECHM': 1234.50,
   'BAJAJFINSV': 1567.80,
   'DRREDDY': 5678.40,
-  'DIVISLAB': 3456.20,
   'CIPLA': 1234.50,
   'EICHERMOT': 4567.30,
   'HEROMOTOCO': 4321.50,
   'GRASIM': 2345.60,
   'BRITANNIA': 4876.50,
-  'SBILIFE': 1456.30,
-  'SHRIRAMFIN': 2345.60,
-  'APOLLOHOSP': 5678.40,
   'BAJAJ-AUTO': 8765.30,
   'HINDALCO': 567.40,
-  'ADANIENT': 2345.60,
-  'TATACONSUM': 1045.30,
   'BPCL': 567.80,
-  'HDFCLIFE': 678.90,
-  'LTIM': 5432.10,
 };
 
 export async function getLatestHistoricalPrice(stockId: number, symbol: string): Promise<StockPrice | null> {
@@ -136,32 +128,46 @@ export async function updatePricesInBackground(
   stocks: Array<{ id: number; symbol: string }>,
   onPriceUpdate: (symbol: string, price: StockPrice) => void
 ): Promise<void> {
-  // No longer fetching from external APIs - using database only
-  // This function is kept for compatibility but does nothing
-  return Promise.resolve();
+  // Fetch live prices from Alpha Vantage in the background
+  const symbols = stocks.map(s => s.symbol);
+
+  for (const symbol of symbols) {
+    try {
+      const price = await fetchStockPrice(symbol);
+      if (price) {
+        onPriceUpdate(symbol, price);
+      }
+    } catch (error) {
+      console.error(`Error fetching live price for ${symbol}:`, error);
+    }
+  }
 }
 
 export async function fetchMultipleStockPrices(symbolsOrStocks: string[] | Array<{ id: number; symbol: string }>): Promise<Map<string, StockPrice>> {
-  const priceMap = new Map<string, StockPrice>();
-
   // Handle both symbol arrays and stock objects
   const stocks = Array.isArray(symbolsOrStocks) && typeof symbolsOrStocks[0] === 'string'
     ? (symbolsOrStocks as string[]).map(symbol => ({ symbol, id: 0 }))
     : symbolsOrStocks as Array<{ id: number; symbol: string }>;
 
-  // If we have stock IDs, fetch from database
-  if (stocks[0]?.id) {
-    for (const stock of stocks) {
-      const price = await getLatestHistoricalPrice(stock.id, stock.symbol) || getFallbackPrice(stock.symbol);
-      priceMap.set(stock.symbol, price);
-    }
-  } else {
-    // If we only have symbols, use fallback
-    for (const stock of stocks) {
-      const price = getFallbackPrice(stock.symbol);
-      priceMap.set(stock.symbol, price);
-    }
-  }
+  const symbols = stocks.map(s => s.symbol);
 
-  return priceMap;
+  // Try to fetch from Alpha Vantage API first
+  try {
+    const prices = await fetchMultipleFromAPI(symbols);
+    return prices;
+  } catch (error) {
+    console.error('Error fetching from API, using database/fallback:', error);
+
+    // Fallback to database historical prices
+    const priceMap = new Map<string, StockPrice>();
+    for (const stock of stocks) {
+      if (stock.id) {
+        const price = await getLatestHistoricalPrice(stock.id, stock.symbol) || getFallbackPrice(stock.symbol);
+        priceMap.set(stock.symbol, price);
+      } else {
+        priceMap.set(stock.symbol, getFallbackPrice(stock.symbol));
+      }
+    }
+    return priceMap;
+  }
 }

@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Stock, Holding } from '../lib/types';
 import { formatCurrency } from '../lib/marketUtils';
-import { getLatestHistoricalPrice, getFallbackPrice } from '../lib/stockPrices';
+import { fetchStockPrice } from '../lib/yahooFinance';
 import { X, AlertCircle } from 'lucide-react';
 
 interface BuySellModalProps {
@@ -44,7 +44,7 @@ export default function BuySellModal({ type, stock, currentPrice, holding, onClo
     setLoading(true);
 
     try {
-      const latestPrice = await getLatestHistoricalPrice(stock.id, stock.symbol) || getFallbackPrice(stock.symbol);
+      const latestPrice = await fetchStockPrice(stock.symbol);
       if (!latestPrice) {
         throw new Error('Unable to fetch current price. Please try again.');
       }

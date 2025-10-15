@@ -6,6 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Stock, StockHistory, Holding, StockPrice } from '../lib/types';
+import { fetchStockPrice } from '../lib/yahooFinance';
 import { getLatestHistoricalPrice, getFallbackPrice } from '../lib/stockPrices';
 import { formatCurrency, formatNumber, formatDate, formatChartDate, isMarketOpen, getNextMarketOpenTime } from '../lib/marketUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -88,6 +89,13 @@ export default function StockDetail() {
       }
 
       setLoading(false);
+
+      // Fetch live price from Alpha Vantage in background
+      fetchStockPrice(stockData.symbol).then(livePrice => {
+        if (livePrice) {
+          setPriceData(livePrice);
+        }
+      });
     } catch (error) {
       console.error('Error fetching stock data:', error);
       setLoading(false);
@@ -96,8 +104,10 @@ export default function StockDetail() {
 
   const fetchLivePrice = async () => {
     if (symbol && stock) {
-      const price = await getLatestHistoricalPrice(stock.id, stock.symbol) || getFallbackPrice(stock.symbol);
-      setPriceData(price);
+      const price = await fetchStockPrice(stock.symbol);
+      if (price) {
+        setPriceData(price);
+      }
     }
   };
 

@@ -24,7 +24,7 @@ interface RequestQueueItem {
 const requestQueue: RequestQueueItem[] = [];
 let isProcessingQueue = false;
 
-// Fallback prices for when API limit is reached
+// Fallback prices for when API limit is reached (41 stocks with historical data)
 const FALLBACK_PRICES: Record<string, number> = {
   'RELIANCE': 2456.50,
   'TCS': 3678.25,
@@ -56,26 +56,17 @@ const FALLBACK_PRICES: Record<string, number> = {
   'JSWSTEEL': 876.30,
   'INDUSINDBK': 1345.60,
   'ADANIPORTS': 1234.50,
-  'M&M': 1876.40,
   'TECHM': 1234.50,
   'BAJAJFINSV': 1567.80,
   'DRREDDY': 5678.40,
-  'DIVISLAB': 3456.20,
   'CIPLA': 1234.50,
   'EICHERMOT': 4567.30,
   'HEROMOTOCO': 4321.50,
   'GRASIM': 2345.60,
   'BRITANNIA': 4876.50,
-  'SBILIFE': 1456.30,
-  'SHRIRAMFIN': 2345.60,
-  'APOLLOHOSP': 5678.40,
   'BAJAJ-AUTO': 8765.30,
   'HINDALCO': 567.40,
-  'ADANIENT': 2345.60,
-  'TATACONSUM': 1045.30,
   'BPCL': 567.80,
-  'HDFCLIFE': 678.90,
-  'LTIM': 5432.10,
 };
 
 // Map NSE symbols to BSE for Alpha Vantage
