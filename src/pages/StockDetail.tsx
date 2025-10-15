@@ -75,13 +75,19 @@ export default function StockDetail() {
 
       setHolding(holdingData);
 
-      const { data: historyData } = await supabase
+      const { data: historyData, error: historyError } = await supabase
         .from('stock_history')
         .select('*')
         .eq('stock_id', stockData.id)
         .order('date', { ascending: true });
 
-      setHistory(historyData || []);
+      if (historyError) {
+        console.error('Error fetching stock history:', historyError);
+        setHistory([]);
+      } else {
+        console.log(`Fetched ${historyData?.length || 0} historical records for ${stockData.symbol} (stock_id: ${stockData.id})`);
+        setHistory(historyData || []);
+      }
 
       setLoading(false);
 
@@ -104,29 +110,34 @@ export default function StockDetail() {
   };
 
   const getFilteredHistory = () => {
-    if (history.length === 0) return [];
+    if (history.length === 0) {
+      console.log('No history data available');
+      return [];
+    }
 
-    const now = new Date();
+    console.log(`Total history records: ${history.length}, Time range: ${timeRange}`);
+
+    const latestDate = new Date(history[history.length - 1].date);
     let filtered: StockHistory[] = [];
 
     switch (timeRange) {
       case '1M': {
-        const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const cutoff = new Date(latestDate.getTime() - 30 * 24 * 60 * 60 * 1000);
         filtered = history.filter((h) => new Date(h.date) >= cutoff);
         break;
       }
       case '3M': {
-        const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        const cutoff = new Date(latestDate.getTime() - 90 * 24 * 60 * 60 * 1000);
         filtered = history.filter((h) => new Date(h.date) >= cutoff);
         break;
       }
       case '6M': {
-        const cutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        const cutoff = new Date(latestDate.getTime() - 180 * 24 * 60 * 60 * 1000);
         filtered = history.filter((h) => new Date(h.date) >= cutoff);
         break;
       }
       case '1Y': {
-        const cutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        const cutoff = new Date(latestDate.getTime() - 365 * 24 * 60 * 60 * 1000);
         const yearData = history.filter((h) => new Date(h.date) >= cutoff);
         filtered = sampleData(yearData, 100);
         break;
@@ -135,6 +146,11 @@ export default function StockDetail() {
         filtered = sampleDataMonthly(history);
         break;
       }
+    }
+
+    console.log(`Filtered to ${filtered.length} records for ${timeRange}`);
+    if (filtered.length > 0) {
+      console.log(`Date range: ${filtered[0].date} to ${filtered[filtered.length - 1].date}`);
     }
 
     return filtered;
