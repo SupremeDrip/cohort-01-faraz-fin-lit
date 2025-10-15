@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Stock, StockHistory, Holding, StockPrice } from '../lib/types';
 import { fetchStockPrice } from '../lib/yahooFinance';
 import { getLatestHistoricalPrice, getFallbackPrice } from '../lib/stockPrices';
-import { formatCurrency, formatNumber, formatDate, isMarketOpen, getNextMarketOpenTime } from '../lib/marketUtils';
+import { formatCurrency, formatNumber, formatDate, formatChartDate, isMarketOpen, getNextMarketOpenTime } from '../lib/marketUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, Clock, ArrowLeft, Sparkles, BookOpen } from 'lucide-react';
 import BuySellModal from '../components/BuySellModal';
@@ -79,8 +79,7 @@ export default function StockDetail() {
         .from('stock_history')
         .select('*')
         .eq('stock_id', stockData.id)
-        .order('date', { ascending: true })
-        .limit(365);
+        .order('date', { ascending: true });
 
       setHistory(historyData || []);
 
@@ -108,24 +107,73 @@ export default function StockDetail() {
     if (history.length === 0) return [];
 
     const now = new Date();
-    let daysBack = 30;
+    let filtered: StockHistory[] = [];
 
     switch (timeRange) {
-      case '3M':
-        daysBack = 90;
+      case '1M': {
+        const cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = history.filter((h) => new Date(h.date) >= cutoff);
         break;
-      case '6M':
-        daysBack = 180;
+      }
+      case '3M': {
+        const cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        filtered = history.filter((h) => new Date(h.date) >= cutoff);
         break;
-      case '1Y':
-        daysBack = 365;
+      }
+      case '6M': {
+        const cutoff = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        filtered = history.filter((h) => new Date(h.date) >= cutoff);
         break;
-      case 'ALL':
-        return history;
+      }
+      case '1Y': {
+        const cutoff = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        const yearData = history.filter((h) => new Date(h.date) >= cutoff);
+        filtered = sampleData(yearData, 100);
+        break;
+      }
+      case 'ALL': {
+        filtered = sampleDataMonthly(history);
+        break;
+      }
     }
 
-    const cutoffDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
-    return history.filter((h) => new Date(h.date) >= cutoffDate);
+    return filtered;
+  };
+
+  const sampleData = (data: StockHistory[], targetPoints: number): StockHistory[] => {
+    if (data.length <= targetPoints) return data;
+
+    const step = Math.floor(data.length / targetPoints);
+    const sampled: StockHistory[] = [];
+
+    for (let i = 0; i < data.length; i += step) {
+      sampled.push(data[i]);
+    }
+
+    if (sampled[sampled.length - 1] !== data[data.length - 1]) {
+      sampled.push(data[data.length - 1]);
+    }
+
+    return sampled;
+  };
+
+  const sampleDataMonthly = (data: StockHistory[]): StockHistory[] => {
+    if (data.length === 0) return [];
+
+    const monthlyData: StockHistory[] = [];
+    let currentMonth = '';
+
+    for (const point of data) {
+      const date = new Date(point.date);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+
+      if (monthKey !== currentMonth) {
+        monthlyData.push(point);
+        currentMonth = monthKey;
+      }
+    }
+
+    return monthlyData;
   };
 
   const handleTradeComplete = () => {
@@ -173,8 +221,9 @@ export default function StockDetail() {
   const isPositive = change >= 0;
 
   const chartData = getFilteredHistory().map((h) => ({
-    date: formatDate(h.date),
+    date: formatChartDate(h.date, timeRange),
     price: h.close,
+    fullDate: formatDate(h.date),
   }));
 
   return (
@@ -290,14 +339,43 @@ export default function StockDetail() {
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={400}>
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc' }}
-                  formatter={(value: number) => formatCurrency(value)}
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12 }}
+                  stroke="#6b7280"
+                  interval="preserveStartEnd"
                 />
-                <Line type="monotone" dataKey="price" stroke="#2563eb" strokeWidth={2} dot={false} />
+                <YAxis
+                  domain={['auto', 'auto']}
+                  tick={{ fontSize: 12 }}
+                  stroke="#6b7280"
+                  tickFormatter={(value) => `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                  labelStyle={{ fontWeight: 'bold', marginBottom: '4px' }}
+                  formatter={(value: number) => [formatCurrency(value), 'Price']}
+                  labelFormatter={(label, payload) => {
+                    if (payload && payload[0]) {
+                      return payload[0].payload.fullDate;
+                    }
+                    return label;
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="price"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 6, fill: '#2563eb' }}
+                />
               </LineChart>
             </ResponsiveContainer>
           ) : (

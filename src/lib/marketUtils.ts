@@ -111,3 +111,20 @@ export function getTimeAgo(dateStr: string): string {
 
   return formatDate(dateStr);
 }
+
+export function formatChartDate(dateStr: string, timeRange: string): string {
+  const date = new Date(dateStr);
+
+  switch (timeRange) {
+    case '1M':
+    case '3M':
+      return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+    case '6M':
+    case '1Y':
+      return date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
+    case 'ALL':
+      return date.toLocaleDateString('en-IN', { year: 'numeric' });
+    default:
+      return formatDate(dateStr);
+  }
+}
