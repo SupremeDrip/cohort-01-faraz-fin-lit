@@ -23,6 +23,7 @@ export default function StockDetail() {
   const [history, setHistory] = useState<StockHistory[]>([]);
   const [timeRange, setTimeRange] = useState('1M');
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState(0);
   const [marketOpen, setMarketOpen] = useState(isMarketOpen());
   const [modalType, setModalType] = useState<'buy' | 'sell' | null>(null);
   const [showInsight, setShowInsight] = useState(false);
@@ -42,6 +43,15 @@ export default function StockDetail() {
 
     return () => clearInterval(interval);
   }, [symbol]);
+
+  useEffect(() => {
+    if (loading) {
+      const messageInterval = setInterval(() => {
+        setLoadingMessage((prev) => (prev + 1) % 3);
+      }, 2000);
+      return () => clearInterval(messageInterval);
+    }
+  }, [loading]);
 
   const fetchStockData = async () => {
     setLoading(true);
@@ -219,9 +229,32 @@ export default function StockDetail() {
   };
 
   if (loading) {
+    const loadingMessages = [
+      "Crunching 20+ years of price data...",
+      "Building your personalized chart...",
+      "Almost there! Loading market insights..."
+    ];
+
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen px-4">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+        <h3 className="text-2xl font-bold text-gray-800 mt-8 mb-3">Hold on a sec!</h3>
+        <p className="text-lg text-gray-700 text-center max-w-md font-medium mb-2 transition-all duration-500">
+          {loadingMessages[loadingMessage]}
+        </p>
+        <p className="text-sm text-gray-500 text-center max-w-sm">
+          We're pulling together years of historical data just for you
+        </p>
+        <div className="mt-8 flex space-x-2">
+          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+          <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        </div>
       </div>
     );
   }
