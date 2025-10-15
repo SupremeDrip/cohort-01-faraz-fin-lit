@@ -5,7 +5,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Stock, StockPrice } from '../lib/types';
-import { fetchStockPrice } from '../lib/yahooFinance';
 import { getInitialStockPrices, updatePricesInBackground } from '../lib/stockPrices';
 import { formatCurrency, formatNumber, isMarketOpen } from '../lib/marketUtils';
 import { Search, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';

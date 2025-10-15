@@ -1,8 +1,7 @@
-// Stock price utilities for fetching historical and live prices
-// Provides fast initial loading using historical data with background live price updates
+// Stock price utilities for fetching historical and current prices
+// Uses historical database data with fallback mock prices
 
 import { supabase } from './supabase';
-import { fetchStockPrice, fetchMultipleStockPrices } from './yahooFinance';
 import { StockPrice } from './types';
 
 const FALLBACK_PRICES: Record<string, number> = {
@@ -137,16 +136,32 @@ export async function updatePricesInBackground(
   stocks: Array<{ id: number; symbol: string }>,
   onPriceUpdate: (symbol: string, price: StockPrice) => void
 ): Promise<void> {
-  const symbols = stocks.map(s => s.symbol);
+  // No longer fetching from external APIs - using database only
+  // This function is kept for compatibility but does nothing
+  return Promise.resolve();
+}
 
-  for (const symbol of symbols) {
-    try {
-      const price = await fetchStockPrice(symbol);
-      if (price) {
-        onPriceUpdate(symbol, price);
-      }
-    } catch (error) {
-      console.error(`Error fetching live price for ${symbol}:`, error);
+export async function fetchMultipleStockPrices(symbolsOrStocks: string[] | Array<{ id: number; symbol: string }>): Promise<Map<string, StockPrice>> {
+  const priceMap = new Map<string, StockPrice>();
+
+  // Handle both symbol arrays and stock objects
+  const stocks = Array.isArray(symbolsOrStocks) && typeof symbolsOrStocks[0] === 'string'
+    ? (symbolsOrStocks as string[]).map(symbol => ({ symbol, id: 0 }))
+    : symbolsOrStocks as Array<{ id: number; symbol: string }>;
+
+  // If we have stock IDs, fetch from database
+  if (stocks[0]?.id) {
+    for (const stock of stocks) {
+      const price = await getLatestHistoricalPrice(stock.id, stock.symbol) || getFallbackPrice(stock.symbol);
+      priceMap.set(stock.symbol, price);
+    }
+  } else {
+    // If we only have symbols, use fallback
+    for (const stock of stocks) {
+      const price = getFallbackPrice(stock.symbol);
+      priceMap.set(stock.symbol, price);
     }
   }
+
+  return priceMap;
 }

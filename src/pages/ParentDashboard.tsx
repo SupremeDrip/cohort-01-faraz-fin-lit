@@ -4,8 +4,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Profile, Holding, Transaction, Stock } from '../lib/types';
-import { fetchMultipleStockPrices, StockPrice } from '../lib/yahooFinance';
+import { Profile, Holding, Transaction, Stock, StockPrice } from '../lib/types';
+import { fetchMultipleStockPrices } from '../lib/stockPrices';
 import { formatCurrency, formatDateTime } from '../lib/marketUtils';
 import { TrendingUp, TrendingDown, DollarSign, PieChart, Users } from 'lucide-react';
 

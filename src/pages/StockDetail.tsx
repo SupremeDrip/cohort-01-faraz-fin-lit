@@ -6,7 +6,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Stock, StockHistory, Holding, StockPrice } from '../lib/types';
-import { fetchStockPrice } from '../lib/yahooFinance';
 import { getLatestHistoricalPrice, getFallbackPrice } from '../lib/stockPrices';
 import { formatCurrency, formatNumber, formatDate, formatChartDate, isMarketOpen, getNextMarketOpenTime } from '../lib/marketUtils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -85,31 +84,10 @@ export default function StockDetail() {
         console.error('Error fetching stock history:', historyError);
         setHistory([]);
       } else {
-        console.log(`Fetched ${historyData?.length || 0} historical records for ${stockData.symbol} (stock_id: ${stockData.id})`);
-
-        // Debug: Check what stock_ids actually exist in stock_history
-        const { data: sampleHistory } = await supabase
-          .from('stock_history')
-          .select('stock_id')
-          .limit(100);
-
-        if (sampleHistory) {
-          const uniqueIds = [...new Set(sampleHistory.map(h => h.stock_id))].sort((a, b) => a - b);
-          console.log(`📊 Sample stock_ids found in stock_history table: ${uniqueIds.slice(0, 20).join(', ')}`);
-          console.log(`📊 Does stock_history contain our stock_id ${stockData.id}? ${uniqueIds.includes(stockData.id) ? '✅ YES' : '❌ NO'}`);
-          console.log(`📊 Stock_id range in history: ${Math.min(...uniqueIds)} to ${Math.max(...uniqueIds)}`);
-        }
-
         setHistory(historyData || []);
       }
 
       setLoading(false);
-
-      fetchStockPrice(symbol!).then(livePrice => {
-        if (livePrice) {
-          setPriceData(livePrice);
-        }
-      });
     } catch (error) {
       console.error('Error fetching stock data:', error);
       setLoading(false);
@@ -117,19 +95,16 @@ export default function StockDetail() {
   };
 
   const fetchLivePrice = async () => {
-    if (symbol) {
-      const price = await fetchStockPrice(symbol);
+    if (symbol && stock) {
+      const price = await getLatestHistoricalPrice(stock.id, stock.symbol) || getFallbackPrice(stock.symbol);
       setPriceData(price);
     }
   };
 
   const getFilteredHistory = () => {
     if (history.length === 0) {
-      console.log('No history data available');
       return [];
     }
-
-    console.log(`Total history records: ${history.length}, Time range: ${timeRange}`);
 
     const latestDate = new Date(history[history.length - 1].date);
     let filtered: StockHistory[] = [];
@@ -367,10 +342,10 @@ export default function StockDetail() {
           </div>
 
           {history.length === 0 && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-900 font-medium mb-2">Historical data may not be imported yet</p>
-              <p className="text-xs text-blue-700">
-                To import historical stock data, run: <code className="bg-blue-100 px-2 py-1 rounded">node scripts/importHistoricalData.js</code>
+            <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm text-yellow-900 font-medium mb-2">📊 No Historical Data Available</p>
+              <p className="text-xs text-yellow-700">
+                Historical price data is not available for {stock.symbol}. This stock can still be traded using current prices.
               </p>
             </div>
           )}

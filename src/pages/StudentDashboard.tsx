@@ -4,9 +4,9 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Holding, Stock, Transaction } from '../lib/types';
+import { Holding, Stock, Transaction, StockPrice } from '../lib/types';
 import { formatCurrency, formatNumber, formatDateTime } from '../lib/marketUtils';
-import { fetchMultipleStockPrices, StockPrice } from '../lib/yahooFinance';
+import { fetchMultipleStockPrices } from '../lib/stockPrices';
 import { TrendingUp, TrendingDown, DollarSign, PieChart, Wallet, ShoppingCart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BuySellModal from '../components/BuySellModal';
