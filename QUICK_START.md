@@ -1,32 +1,52 @@
 # Quick Start Guide - Historical Data Import
 
-## 🚀 Steps to Import Your Stock Data
+## 🚀 Steps to Import Your Stock Data (After Bolt.new Setup)
 
-### 1. Prepare Your Files
+### ✅ Prerequisites - Automatic Setup via Bolt.new
 
-Create a `data` folder in your project root and place your 5 CSV files there:
+When you import this repository into Bolt.new, the following happens automatically:
 
-```bash
-mkdir data
-```
+1. ✅ Supabase database is provisioned
+2. ✅ Migration file `20251015000000_initial_finsim_schema.sql` is executed
+3. ✅ All 8 database tables are created (profiles, stocks, stock_history, holdings, transactions, posts, comments, likes)
+4. ✅ Row Level Security (RLS) policies are configured
+5. ✅ Environment variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) are set in `.env`
 
-Then copy your files:
+**Note:** The `stocks` and `stock_history` tables have RLS **disabled** to allow the import script to insert data smoothly.
+
+### 1. Verify Your Data Files
+
+The `data` folder with 5 CSV files should already be present in your project:
+
 ```
 data/
-├── merged_group_1.csv
-├── merged_group_2.csv
-├── merged_group_3.csv
-├── merged_group_4.csv
-└── merged_group_5.csv
+├── merged_group_1.csv  (~46,000 rows)
+├── merged_group_2.csv  (~46,000 rows)
+├── merged_group_3.csv  (~46,000 rows)
+├── merged_group_4.csv  (~46,000 rows)
+└── merged_group_5.csv  (~46,000 rows)
 ```
 
-### 2. Run the Import
+**Total:** ~230,000 historical stock records from NSE (2008-present)
+
+### 2. Verify Environment Variables
+
+Check that your `.env` file contains Supabase credentials (Bolt auto-populates these):
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key_here
+```
+
+### 3. Run the Import Script
+
+Open the Bolt.new terminal and execute:
 
 ```bash
 node scripts/importHistoricalData.js
 ```
 
-### 3. Monitor Progress
+### 4. Monitor Progress
 
 The script will show real-time progress:
 - Stock initialization
@@ -36,7 +56,7 @@ The script will show real-time progress:
 
 Expected time: **15-20 minutes** for ~230,000 rows
 
-### 4. Verify Success
+### 5. Verify Success
 
 After completion, you'll see:
 ```
@@ -49,6 +69,11 @@ After completion, you'll see:
 ⏱️  Total time: XXX.XX seconds
 ============================================================
 ```
+
+**Expected Results:**
+- ✅ ~220,000+ rows successfully imported
+- ⏭️ ~9,000-10,000 rows skipped (stocks not in Nifty 50 or invalid data)
+- ❌ 0 failed rows (if any failures, check error messages)
 
 ## 📊 What Gets Imported
 
@@ -102,6 +127,18 @@ Once import is complete:
 - **Re-running is safe**: The script uses upsert, so running it multiple times won't create duplicates
 - **Add more data**: Drop new CSV files in the `data/` folder and run again
 - **Check logs**: The script shows detailed progress for debugging
+
+## 🔒 Security Note - Re-enabling RLS (Optional)
+
+Currently, the `stocks` and `stock_history` tables have Row Level Security (RLS) **disabled** to allow the import script to work smoothly.
+
+**After successful data import**, you may want to re-enable RLS for production security:
+
+1. This prevents unauthorized modifications to stock data
+2. However, price update scripts will need service role key access
+3. Consult with the developer to apply the appropriate RLS policies
+
+**For now, you can proceed with RLS disabled as the data is read-only in the application interface.**
 
 ---
 

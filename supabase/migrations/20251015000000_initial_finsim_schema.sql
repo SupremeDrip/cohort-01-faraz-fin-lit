@@ -2,8 +2,8 @@
   # FinSim Paper Trading Simulator - Complete Database Schema
 
   ## Overview
-  This migration creates the complete database schema for FinSim, a paper trading simulator 
-  for Indian teenagers to learn stock market investing.
+  This migration creates the complete database schema for FinSim, a paper trading simulator
+  for Indian teenagers to learn stock market investing with virtual currency.
 
   ## Tables Created
 
@@ -23,10 +23,18 @@
      - current_price: Latest market price
      - last_updated: Last price update timestamp
 
-  3. **stock_history** - Historical price data for charts
+  3. **stock_history** - Historical price data for charts and analysis
      - stock_id: Foreign key to stocks
      - date: Trading date
+     - prev_close: Previous day's closing price
      - open, high, low, close: Daily OHLC data
+     - last: Last traded price
+     - vwap: Volume Weighted Average Price
+     - volume: Total trading volume
+     - turnover: Total turnover value
+     - trades: Number of trades executed
+     - deliverable_volume: Volume of deliverable shares (nullable)
+     - deliverable_percent: Percentage of deliverable volume (nullable)
      - Composite primary key (stock_id, date)
 
   4. **holdings** - User's current stock portfolio
@@ -65,17 +73,36 @@
      - created_at: Like timestamp
      - Composite primary key (post_id, user_id)
 
-  ## Security
-  - Row Level Security (RLS) enabled on all tables
-  - Students can only access their own data
-  - Parents can view their linked child's portfolio and activity
-  - Stock data is publicly readable for all authenticated users
-  - Social feed data follows proper access patterns
+  ## Security - Row Level Security (RLS)
+
+  ### RLS ENABLED on:
+  - profiles: Students can only access their own data, parents can view linked child's profile
+  - holdings: Students manage own holdings, parents can view child's holdings
+  - transactions: Students view own transactions, parents can view child's transactions
+  - posts, comments, likes: All authenticated students can view, users manage own content
+
+  ### RLS DISABLED on:
+  - stocks: Open for data import and updates via import script
+  - stock_history: Open for data import via CSV import script
+
+  Note: After historical data import is complete, RLS can be re-enabled on stocks and
+  stock_history tables with appropriate read-only policies for authenticated users.
 
   ## Indexes
-  - Created on foreign keys for query performance
-  - Added on frequently queried columns (role, parent_code, timestamp)
+  - Performance indexes on foreign keys and frequently queried columns
+  - Composite indexes for optimized queries (role, parent_code, timestamp, date)
+
+  ## Import Process
+  After this migration runs successfully:
+  1. Run: node scripts/importHistoricalData.js
+  2. Script will populate stocks table with Nifty 50 stocks
+  3. Script will import ~230,000 rows of historical data from CSV files
+  4. After import, consider re-enabling RLS on stocks/stock_history tables
 */
+
+-- ============================================================================
+-- TABLE CREATION
+-- ============================================================================
 
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS profiles (
@@ -97,14 +124,22 @@ CREATE TABLE IF NOT EXISTS stocks (
   last_updated timestamptz DEFAULT now()
 );
 
--- Create stock_history table
+-- Create stock_history table with comprehensive NSE data fields
 CREATE TABLE IF NOT EXISTS stock_history (
   stock_id integer REFERENCES stocks(id) ON DELETE CASCADE,
   date date NOT NULL,
+  prev_close numeric(12,2),
   open numeric(10,2) NOT NULL,
   high numeric(10,2) NOT NULL,
   low numeric(10,2) NOT NULL,
+  last numeric(12,2),
   close numeric(10,2) NOT NULL,
+  vwap numeric(12,2),
+  volume bigint DEFAULT 0,
+  turnover numeric(20,2) DEFAULT 0,
+  trades integer DEFAULT 0,
+  deliverable_volume bigint,
+  deliverable_percent numeric(5,2),
   PRIMARY KEY (stock_id, date)
 );
 
@@ -154,10 +189,15 @@ CREATE TABLE IF NOT EXISTS likes (
   PRIMARY KEY (post_id, user_id)
 );
 
--- Create indexes for better query performance
+-- ============================================================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================================================
+
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
 CREATE INDEX IF NOT EXISTS idx_profiles_parent_code ON profiles(parent_code);
 CREATE INDEX IF NOT EXISTS idx_profiles_linked_parent ON profiles(linked_parent_id);
+CREATE INDEX IF NOT EXISTS idx_stocks_symbol ON stocks(symbol);
+CREATE INDEX IF NOT EXISTS idx_stock_history_date ON stock_history(date DESC);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_holdings_user_id ON holdings(user_id);
@@ -165,17 +205,26 @@ CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id);
 
--- Enable Row Level Security
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS) CONFIGURATION
+-- ============================================================================
+
+-- Enable RLS on user-facing tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stocks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE holdings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies for profiles
+-- Disable RLS on stock data tables (for CSV import process)
+ALTER TABLE stocks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_history DISABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- RLS POLICIES FOR PROFILES
+-- ============================================================================
+
 CREATE POLICY "Users can view own profile"
   ON profiles FOR SELECT
   TO authenticated
@@ -196,23 +245,14 @@ CREATE POLICY "Parents can view linked child profile"
   ON profiles FOR SELECT
   TO authenticated
   USING (
-    auth.uid() = id OR 
+    auth.uid() = id OR
     linked_parent_id = auth.uid()
   );
 
--- RLS Policies for stocks (read-only for all authenticated users)
-CREATE POLICY "Authenticated users can view stocks"
-  ON stocks FOR SELECT
-  TO authenticated
-  USING (true);
+-- ============================================================================
+-- RLS POLICIES FOR HOLDINGS
+-- ============================================================================
 
--- RLS Policies for stock_history (read-only for all authenticated users)
-CREATE POLICY "Authenticated users can view stock history"
-  ON stock_history FOR SELECT
-  TO authenticated
-  USING (true);
-
--- RLS Policies for holdings
 CREATE POLICY "Users can view own holdings"
   ON holdings FOR SELECT
   TO authenticated
@@ -246,7 +286,10 @@ CREATE POLICY "Parents can view child holdings"
     )
   );
 
--- RLS Policies for transactions
+-- ============================================================================
+-- RLS POLICIES FOR TRANSACTIONS
+-- ============================================================================
+
 CREATE POLICY "Users can view own transactions"
   ON transactions FOR SELECT
   TO authenticated
@@ -269,7 +312,11 @@ CREATE POLICY "Parents can view child transactions"
     )
   );
 
--- RLS Policies for posts
+-- ============================================================================
+-- RLS POLICIES FOR SOCIAL FEATURES (POSTS, COMMENTS, LIKES)
+-- ============================================================================
+
+-- Posts policies
 CREATE POLICY "Authenticated users can view posts"
   ON posts FOR SELECT
   TO authenticated
@@ -291,7 +338,7 @@ CREATE POLICY "Users can delete own posts"
   TO authenticated
   USING (user_id = auth.uid());
 
--- RLS Policies for comments
+-- Comments policies
 CREATE POLICY "Authenticated users can view comments"
   ON comments FOR SELECT
   TO authenticated
@@ -313,7 +360,7 @@ CREATE POLICY "Users can delete own comments"
   TO authenticated
   USING (user_id = auth.uid());
 
--- RLS Policies for likes
+-- Likes policies
 CREATE POLICY "Authenticated users can view likes"
   ON likes FOR SELECT
   TO authenticated
@@ -328,3 +375,16 @@ CREATE POLICY "Users can delete own likes"
   ON likes FOR DELETE
   TO authenticated
   USING (user_id = auth.uid());
+
+-- ============================================================================
+-- TABLE COMMENTS FOR DOCUMENTATION
+-- ============================================================================
+
+COMMENT ON TABLE profiles IS 'User profiles with role-based access control (student/parent)';
+COMMENT ON TABLE stocks IS 'Nifty 50 stock information - RLS DISABLED for data import';
+COMMENT ON TABLE stock_history IS 'Historical NSE trading data - RLS DISABLED for CSV import';
+COMMENT ON TABLE holdings IS 'User stock portfolio holdings with RLS enabled';
+COMMENT ON TABLE transactions IS 'Complete trading transaction history with RLS enabled';
+COMMENT ON TABLE posts IS 'Social feed posts for student community';
+COMMENT ON TABLE comments IS 'Comments on social feed posts';
+COMMENT ON TABLE likes IS 'User likes on social feed posts';
